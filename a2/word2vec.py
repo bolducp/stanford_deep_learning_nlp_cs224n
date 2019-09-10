@@ -108,12 +108,26 @@ def negSamplingLossAndGradient(
     negSampleWordIndices = getNegativeSamples(outsideWordIdx, dataset, K)
     indices = [outsideWordIdx] + negSampleWordIndices
 
-    ### YOUR CODE HERE
+   
+    num_words, d = outsideVectors.shape
+    u_o = outsideVectors[outsideWordIdx]
+    loss_o = -np.log(sigmoid(np.dot(centerWordVec, u_o.T)))
+    loss_k = 0
+    
+    gradCenterVec_term1 = (sigmoid(np.dot(centerWordVec, u_o.T)) - 1) * u_o
+    gradCenterVec_term2 = np.zeros(d)
+    
+    gradOutsideVecs = np.zeros((num_words, d))
+    gradOutsideVecs[outsideWordIdx] = (sigmoid(np.dot(centerWordVec, u_o.T)) - 1) * centerWordVec
 
-    ### Please use your implementation of sigmoid in here.
+    for k in negSampleWordIndices:
+        u_k = outsideVectors[k]
+        loss_k += np.log(sigmoid(-np.dot(centerWordVec, u_k.T)))
+        gradCenterVec_term2 += (sigmoid(-np.dot(centerWordVec, u_k.T)) - 1) * u_k
+        gradOutsideVecs[k] += -(sigmoid(-np.dot(centerWordVec, u_k.T)) - 1) * centerWordVec
 
-
-    ### END YOUR CODE
+    loss = loss_o - loss_k
+    gradCenterVec = gradCenterVec_term1 - gradCenterVec_term2
 
     return loss, gradCenterVec, gradOutsideVecs
 
@@ -148,14 +162,20 @@ def skipgram(currentCenterWord, windowSize, outsideWords, word2Ind,
     gradOutsideVectors -- the gradient with respect to the outside word vectors
                         (dJ / dU in the pdf handout)
     """
-
+    
     loss = 0.0
     gradCenterVecs = np.zeros(centerWordVectors.shape)
     gradOutsideVectors = np.zeros(outsideVectors.shape)
 
-    ### YOUR CODE HERE
+    v_c_idx = word2Ind[currentCenterWord]
+    v_c = centerWordVectors[v_c_idx]
 
-    ### END YOUR CODE
+    for u_w in outsideWords:
+        u_w_idx = word2Ind[u_w]
+        u_w_loss, u_w_gradCenter, u_w_gradOutside = word2vecLossAndGradient(v_c, u_w_idx, outsideVectors, dataset)
+        loss += u_w_loss
+        gradCenterVecs[v_c_idx] += u_w_gradCenter
+        gradOutsideVectors += u_w_gradOutside
 
     return loss, gradCenterVecs, gradOutsideVectors
 
