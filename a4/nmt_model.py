@@ -300,7 +300,6 @@ class NMT(nn.Module):
 
         combined_output = None
 
-        ### YOUR CODE HERE (~3 Lines)
         ### TODO:
         ###     1. Apply the decoder to `Ybar_t` and `dec_state`to obtain the new dec_state.
         ###     2. Split dec_state into its two parts (dec_hidden, dec_cell)
@@ -314,7 +313,11 @@ class NMT(nn.Module):
         ###         - To get the tensors into the right shapes for bmm, you will need to do some squeezing and unsqueezing.
         ###         - When using the squeeze() function make sure to specify the dimension you want to squeeze
         ###             over. Otherwise, you will remove the batch dimension accidentally, if batch_size = 1.
-        ###
+ 
+        dec_state = self.decoder(Ybar_t, dec_state)
+        (dec_hidden, dec_cell) = dec_state
+        e_t = torch.bmm(enc_hiddens_proj, dec_hidden.unsqueeze(2)).squeeze(2)
+
         ### Use the following docs to implement this functionality:
         ###     Batch Multiplication:
         ###        https://pytorch.org/docs/stable/torch.html#torch.bmm
@@ -323,8 +326,6 @@ class NMT(nn.Module):
         ###     Tensor Squeeze:
         ###         https://pytorch.org/docs/stable/torch.html#torch.squeeze
 
-
-        ### END YOUR CODE
 
         # Set e_t to -inf where enc_masks has 1
         if enc_masks is not None:
@@ -346,6 +347,14 @@ class NMT(nn.Module):
         ###     4. Apply the combined output projection layer to U_t to compute tensor V_t
         ###     5. Compute tensor O_t by first applying the Tanh function and then the dropout layer.
         ###
+
+        alpha_t = torch.nn.functional.softmax(e_t, dim=1)
+
+        a_t = torch.bmm(alpha_t.unsqueeze(1), enc_hiddens).squeeze(1)
+        U_t = torch.cat([a_t, dec_hidden], dim=1)
+        V_t = self.combined_output_projection(U_t)
+        O_t = self.dropout(torch.tanh(V_t))
+
         ### Use the following docs to implement this functionality:
         ###     Softmax:
         ###         https://pytorch.org/docs/stable/nn.html#torch.nn.functional.softmax
