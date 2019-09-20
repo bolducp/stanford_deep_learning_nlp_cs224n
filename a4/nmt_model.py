@@ -220,7 +220,6 @@ class NMT(nn.Module):
         # Initialize a list we will use to collect the combined output o_t on each step
         combined_outputs = []
 
-        ### YOUR CODE HERE (~9 Lines)
         ### TODO:
         ###     1. Apply the attention projection layer to `enc_hiddens` to obtain `enc_hiddens_proj`,
         ###         which should be shape (b, src_len, h),
@@ -243,7 +242,19 @@ class NMT(nn.Module):
         ### Note:
         ###    - When using the squeeze() function make sure to specify the dimension you want to squeeze
         ###      over. Otherwise, you will remove the batch dimension accidentally, if batch_size = 1.
-        ###   
+
+        enc_hiddens_proj = self.att_projection(enc_hiddens)
+        Y = self.model_embeddings.target(target_padded)
+
+        for Y_t in torch.split(Y, 1, dim=0):
+            Y_t = Y_t.squeeze(0)
+            Ybar_t = torch.cat([Y_t, o_prev], dim=1)
+            dec_state, o_t, _ = self.step(Ybar_t,dec_state=dec_state,enc_hiddens=enc_hiddens,enc_hiddens_proj=enc_hiddens_proj,enc_masks=enc_masks,)
+            combined_outputs.append(o_t)
+            o_prev = o_t
+        combined_outputs = torch.stack(combined_outputs)
+
+
         ### Use the following docs to implement this functionality:
         ###     Zeros Tensor:
         ###         https://pytorch.org/docs/stable/torch.html#torch.zeros
@@ -256,8 +267,6 @@ class NMT(nn.Module):
         ###     Tensor Stacking:
         ###         https://pytorch.org/docs/stable/torch.html#torch.stack
 
-
-        ### END YOUR CODE
 
         return combined_outputs
 
