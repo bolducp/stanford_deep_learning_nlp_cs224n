@@ -52,7 +52,6 @@ class NMT(nn.Module):
         self.dropout = None
 
 
-        ### YOUR CODE HERE (~8 Lines)
         ### TODO - Initialize the following variables:
         ###     self.encoder (Bidirectional LSTM with bias)
         ###     self.decoder (LSTM Cell with bias)
@@ -62,7 +61,25 @@ class NMT(nn.Module):
         ###     self.combined_output_projection (Linear Layer with no bias), called W_{u} in the PDF.
         ###     self.target_vocab_projection (Linear Layer with no bias), called W_{vocab} in the PDF.
         ###     self.dropout (Dropout Layer)
-        ###
+
+        # encoder will be feed the word embeddings for the source sentence, and yield hidden states and cell states for both the forwards and backwards LSTMs
+        self.encoder = nn.LSTM(input_size=embed_size, hidden_size=hidden_size, bidirectional=True, bias=True)
+
+        # decoder is initialized with a linear projection of the engcoder's final hidden state and final cell state, and feed the matching target sentence word embeddings
+        self.decoder = nn.LSTMCell(input_size= embed_size + hidden_size, hidden_size=hidden_size, bias=True)
+
+        self.h_projection = nn.Linear(in_features=hidden_size * 2, out_features=hidden_size, bias=False)
+        self.c_projection = nn.Linear(in_features=hidden_size * 2, out_features=hidden_size, bias=False)
+        self.att_projection = nn.Linear(in_features=hidden_size * 2, out_features=hidden_size, bias=False)
+
+        # transformation of decoder hidden states and context vectors before reading out target words
+        # this produces the `attentional vector` in (Luong et al., 2015)
+        self.combined_output_projection = nn.Linear(in_features=hidden_size * 2 + hidden_size, out_features=hidden_size, bias=False)
+
+        # prediction layer of the target vocabulary
+        self.target_vocab_projection = nn.Linear(in_features=hidden_size, out_features=len(vocab.tgt), bias=False)
+        self.dropout = nn.Dropout(dropout_rate)
+
         ### Use the following docs to properly initialize these variables:
         ###     LSTM:
         ###         https://pytorch.org/docs/stable/nn.html#torch.nn.LSTM
@@ -73,8 +90,6 @@ class NMT(nn.Module):
         ###     Dropout Layer:
         ###         https://pytorch.org/docs/stable/nn.html#torch.nn.Dropout
 
-
-        ### END YOUR CODE
 
 
     def forward(self, source: List[List[str]], target: List[List[str]]) -> torch.Tensor:
